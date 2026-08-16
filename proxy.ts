@@ -18,6 +18,6 @@ export const config = {
     // Tout sauf : routes d'auth, page publique d'achat, webhooks, et les
     // fichiers statiques/assets Next.js — négatif plutôt qu'une liste des
     // pages dashboard à maintenir à la main à chaque nouvelle page.
-    "/((?!login|signup|pay|api/auth|api/webhooks|_next/static|_next/image|favicon.ico).*)",
+    "/((?!login|signup|pay|api/auth|api/webhooks|api/transactions|_next/static|_next/image|favicon.ico).*)",
   ],
 };
