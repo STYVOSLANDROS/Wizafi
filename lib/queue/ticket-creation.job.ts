@@ -26,7 +26,9 @@ export function registerTicketCreationWorker(): Promise<string> {
   );
 }
 
-async function processTicketCreation(transactionId: number): Promise<void> {
+// Exporté : réutilisé par le bouton "Créer un ticket manuellement" du
+// dashboard (spec §6, filet de secours opérateur), en plus du worker pg-boss.
+export async function processTicketCreation(transactionId: number): Promise<void> {
   const transaction = await prisma.transaction.findUniqueOrThrow({
     where: { id: transactionId },
     include: { plan: { include: { router: { include: { site: true } } } }, ticket: true },
