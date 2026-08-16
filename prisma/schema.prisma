@@ -1,7 +1,6 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// Schéma de données WIZAFI — voir SPEC-WIZAFI-V5.md section 5 pour la référence.
+// Règle d'unité monétaire (non négociable, §5) : tous les montants sont des
+// entiers en XAF (Int), jamais de décimaux, jamais de centimes.
 
 generator client {
   provider = "prisma-client"
@@ -10,4 +9,167 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+enum ConnectionMode {
+  direct
+  wireguard
+}
+
+enum RouterStatus {
+  online
+  offline
+}
+
+enum TransactionStatus {
+  CREATED
+  PAYMENT_PENDING
+  PAYMENT_CONFIRMED
+  TICKET_PENDING
+  COMPLETED
+  PAYMENT_FAILED
+  PAYMENT_EXPIRED
+  TICKET_FAILED
+}
+
+enum TicketStatus {
+  CREATED
+  ACTIVATED
+  EXPIRED
+  DISABLED
+}
+
+enum MikrotikCreationStatus {
+  pending
+  success
+  failed
+}
+
+enum PayoutStatus {
+  pending
+  paid
+  rejected
+}
+
+model Operator {
+  id               Int      @id @default(autoincrement())
+  email            String   @unique
+  password_hash    String
+  name             String
+  phone            String
+  country          String
+  sms_enabled      Boolean  @default(false)
+  commission_rate  Float    @default(0.10)
+  balance          Int      @default(0)
+  created_at       DateTime @default(now())
+
+  sites   Site[]
+  payouts Payout[]
+}
+
+// Regroupe les routeurs d'un même lieu physique appartenant à un opérateur.
+model Site {
+  id          Int    @id @default(autoincrement())
+  operator_id Int
+  operator    Operator @relation(fields: [operator_id], references: [id])
+  name        String
+  address     String
+
+  routers Router[]
+}
+
+model Router {
+  id                     Int            @id @default(autoincrement())
+  site_id                Int
+  site                   Site           @relation(fields: [site_id], references: [id])
+  name                   String
+  connection_mode        ConnectionMode
+  ddns_or_ip             String
+  wireguard_pubkey       String?
+  api_username           String
+  api_password_encrypted String
+  hotspot_dns_name       String
+  // Identifiant public aléatoire pour l'URL /pay/<public_slug> — jamais l'id
+  // séquentiel (spec §8).
+  public_slug            String         @unique @default(cuid())
+  status                 RouterStatus   @default(offline)
+  last_checked_at        DateTime?
+
+  plans   Plan[]
+  tickets Ticket[]
+}
+
+// Le forfait commercial vendu au client — distinct du profil technique
+// MikroTik qu'il référence par son nom (mikrotik_profile_name).
+model Plan {
+  id                     Int     @id @default(autoincrement())
+  router_id              Int
+  router                 Router  @relation(fields: [router_id], references: [id])
+  name                   String
+  duration_label         String
+  price                  Int
+  currency               String  @default("XAF")
+  mikrotik_profile_name  String
+  active                 Boolean @default(true)
+
+  transactions Transaction[]
+  tickets      Ticket[]
+}
+
+// État explicite de la vente, jamais binaire (spec §5). L'isolation par
+// opérateur se fait via la chaîne de relations Plan → Router → Site →
+// Operator, jamais par une colonne operator_id redondante ici.
+model Transaction {
+  id                Int               @id @default(autoincrement())
+  plan_id           Int
+  plan              Plan              @relation(fields: [plan_id], references: [id])
+  customer_phone    String
+  amount            Int
+  currency          String            @default("XAF")
+  // Contrainte d'unicité : un même webhook CamPay reçu plusieurs fois ne doit
+  // jamais créer deux transactions (idempotence, spec §6).
+  campay_reference  String            @unique
+  status            TransactionStatus @default(CREATED)
+  created_at        DateTime          @default(now())
+  confirmed_at      DateTime?
+  // Horodatage d'expiration du paiement (créé + 15 min par défaut, spec §5).
+  expires_at        DateTime
+
+  ticket Ticket?
+}
+
+// Jamais supprimé, même expiré — c'est l'historique de ce qui a été vendu.
+model Ticket {
+  id                          Int                     @id @default(autoincrement())
+  // Contrainte d'unicité : une transaction ne peut produire qu'un seul
+  // ticket, même si le webhook CamPay est reçu plusieurs fois.
+  transaction_id              Int                     @unique
+  transaction                 Transaction             @relation(fields: [transaction_id], references: [id])
+  router_id                   Int
+  router                      Router                  @relation(fields: [router_id], references: [id])
+  plan_id                     Int
+  plan                        Plan                    @relation(fields: [plan_id], references: [id])
+  username                    String
+  password                    String
+  status                      TicketStatus            @default(CREATED)
+  mikrotik_creation_status    MikrotikCreationStatus  @default(pending)
+  mikrotik_creation_attempts  Int                     @default(0)
+  created_at                  DateTime                @default(now())
+  // Indicatif, pour les statistiques uniquement — le MikroTik reste la seule
+  // autorité réelle sur l'expiration effective (spec §5).
+  expires_at                  DateTime?
+}
+
+// Demande de retrait — traitement manuel en MVP (spec §1BIS).
+model Payout {
+  id                Int          @id @default(autoincrement())
+  operator_id       Int
+  operator          Operator     @relation(fields: [operator_id], references: [id])
+  amount            Int
+  status            PayoutStatus @default(pending)
+  rejection_reason  String?
+  requested_at      DateTime     @default(now())
+  processed_at      DateTime?
+  // Identifiant de l'admin ayant traité manuellement la demande (MVP).
+  processed_by      String?
 }
