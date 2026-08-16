@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { deleteRouterAction } from "./actions";
 import { DeleteButton } from "@/components/delete-button";
 import { RouterTestButton } from "@/components/router-test-button";
+import { PurchaseLink } from "@/components/purchase-link";
 
 export default async function RoutersPage() {
   const session = await auth();
@@ -19,12 +20,17 @@ export default async function RoutersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Routeurs</h1>
-        <Link
-          href="/routers/new"
-          className="rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white"
-        >
-          Ajouter un routeur
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href="/routers/walled-garden" className="text-sm text-slate-700 underline">
+            Configuration Walled Garden
+          </Link>
+          <Link
+            href="/routers/new"
+            className="rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white"
+          >
+            Ajouter un routeur
+          </Link>
+        </div>
       </div>
 
       {routers.length === 0 ? (
@@ -66,6 +72,9 @@ export default async function RoutersPage() {
                         <DeleteButton confirmLabel="Supprimer ce routeur ?" />
                       </form>
                       <RouterTestButton routerId={router.id} />
+                      <PurchaseLink
+                        url={`${(process.env.APP_DOMAIN ?? "http://localhost:3000").replace(/\/+$/, "")}/pay/${router.public_slug}`}
+                      />
                     </div>
                   </td>
                 </tr>

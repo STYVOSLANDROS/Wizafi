@@ -65,13 +65,25 @@ restent dues, marquées ci-dessous.
   `/health` après une vente ratée, avant de faire confiance à ce chemin en production.
 - **Pages Ventes / Retraits / Santé (spec §10) — terminées et vérifiées** (retraits testés :
   seuil minimum, réservation du solde à la demande) sauf le point ci-dessus.
-- **Pas encore fait** : Walled Garden (docs/walled-garden-setup.md + générateur de lien
-  d'achat, spec Phase 6), audit final (typecheck/lint/build), Phase 7 (WireGuard, hors
-  scope avant commercialisation à un tiers).
-- **Deux choses à faire toi-même, hors code, avant toute mise en production réelle** (déjà
+- **Walled Garden (Phase 6) — terminé et vérifié** : `docs/walled-garden-setup.md` (explication
+  + script WinBox de référence), page dashboard `/routers/walled-garden` qui génère le script
+  avec le vrai domaine (`APP_DOMAIN`), bouton "Copier le lien d'achat" par routeur (spec §9).
+  Point ouvert documenté : le flux CamPay actuel (`/collect/`, notification USSD) ne redirige
+  pas le navigateur du client vers un domaine CamPay, donc seul le domaine de la plateforme est
+  whitelisté pour l'instant — à revoir si vous passez un jour à un flux de paiement hébergé.
+- **Audit final — fait** : `npx tsc --noEmit` et `npx eslint .` propres sur tout le projet,
+  `npm run build` (production) réussi, `npm start` démarré avec succès et les 3 files pg-boss
+  bien créées en base (vérifié directement en SQL).
+- **Phase 7 (WireGuard, audit sécurité, tests de charge) — pas commencée**, volontairement :
+  la spec la place explicitement "avant toute commercialisation à un tiers", et elle dépend de
+  décisions d'infrastructure (VPS) que toi seul peux prendre.
+- **Trois choses à faire toi-même, hors code, avant toute mise en production réelle** (déjà
   notées dans le guide de démarrage) : (1) valider `npm run test:mikrotik` sur le vrai
-  routeur ; (2) contacter CamPay pour confirmer les frais exacts et le mécanisme de signature
-  du webhook, et adapter `lib/payments/campay.ts` si besoin.
+  routeur — **c'est le seul blocage restant avant de pouvoir tester un vrai achat de bout en
+  bout** ; (2) contacter CamPay pour confirmer les frais exacts et le mécanisme de signature
+  du webhook, et adapter `lib/payments/campay.ts` si besoin ; (3) revérifier le chemin
+  "échec MikroTik → TICKET_FAILED → Réessayer → COMPLETED" en conditions réelles (voir
+  Fiabilité ci-dessus).
 - Développement en local : le MikroTik est joignable directement sur le réseau local
   (`https://192.168.88.1/rest`), sans CGNAT ni tunnel à gérer avant la Phase 7 (spec §3).
 - Pense-bête pour la Phase 7 : limiter l'accès au service `www-ssl` du MikroTik à la seule IP
