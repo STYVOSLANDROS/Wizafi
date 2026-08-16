@@ -25,9 +25,19 @@
 - **Prisma 7 exige un driver adapter au runtime** (`@prisma/adapter-pg`) — `PrismaClient` ne lit
   plus `DATABASE_URL` tout seul. Le singleton applicatif est dans `lib/prisma.ts`, à importer
   partout ailleurs plutôt que d'instancier `PrismaClient` à la main.
-- **Prochaine étape (Prompt n°3 du guide de démarrage — Phase 1)** : `lib/mikrotik/client.ts`,
-  le wrapper de l'API REST RouterOS 7 (tester la connexion, lister les User Profiles, créer un
-  utilisateur hotspot), à valider contre un vrai routeur avant de toucher à CamPay.
+- **Wrapper MikroTik (Prompt n°3, Phase 1) — écrit, PAS ENCORE validé sur un vrai routeur** :
+  `lib/mikrotik/client.ts` (testConnection, listHotspotProfiles, createHotspotUser),
+  `lib/mikrotik/ticket-generator.ts` (codes cryptographiquement sûrs, spec §4), et
+  `scripts/test-mikrotik.ts` (`npm run test:mikrotik`). Vérifié dans ce sandbox contre un
+  faux serveur RouterOS (mêmes réponses HTTP, même certificat auto-signé) : le chemin heureux,
+  le rejet 401, et surtout le rejet TLS par défaut (le certificat auto-signé n'est accepté que
+  si MIKROTIK_INSECURE_TLS=true est explicitement mis) fonctionnent tous comme prévu. Cette
+  session n'a pas accès au réseau local du MikroTik réel — **le critère de réussite de la
+  Phase 1 (spec §12, guide §5) reste à valider par toi** : lance `npm run test:mikrotik` sur ta
+  machine, sur le réseau du routeur, et vérifie qu'un ticket apparaît dans IP → Hotspot → Users
+  dans WinBox. Ne pas commencer CamPay avant cette validation.
+- **Prochaine étape** : selon spec §12, la Phase 2 (dashboard minimal, login) vient après. Mais
+  ne pas la démarrer avant validation manuelle de la Phase 1 ci-dessus.
 - Développement en local : le MikroTik est joignable directement sur le réseau local
   (`https://192.168.88.1/rest`), sans CGNAT ni tunnel à gérer avant la Phase 7 (spec §3).
 - Pense-bête pour la Phase 7 : limiter l'accès au service `www-ssl` du MikroTik à la seule IP
