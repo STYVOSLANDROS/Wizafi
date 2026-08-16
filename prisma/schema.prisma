@@ -54,7 +54,8 @@ enum PayoutStatus {
 model Operator {
   id               Int      @id @default(autoincrement())
   email            String   @unique
-  password_hash    String
+  // Nullable : un compte créé via Google OAuth n'a pas de mot de passe local.
+  password_hash    String?
   name             String
   phone            String
   country          String
