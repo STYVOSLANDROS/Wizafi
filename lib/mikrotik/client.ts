@@ -1,4 +1,5 @@
 import { Agent, fetch, type Dispatcher } from "undici";
+import { decrypt } from "@/lib/crypto/encryption";
 
 // Wrapper minimal de l'API REST RouterOS 7. Trois fonctions seulement pour
 // cette étape (Phase 1, Prompt n°3 du guide de démarrage) : tester la
@@ -45,6 +46,28 @@ export function loadMikrotikConfigFromEnv(): MikrotikConfig {
     baseUrl: baseUrl.replace(/\/+$/, ""),
     username,
     password,
+    insecureTls: process.env.MIKROTIK_INSECURE_TLS === "true",
+  };
+}
+
+/**
+ * Construit une config à partir d'un enregistrement Router en base (dashboard,
+ * jobs pg-boss) — déchiffre le mot de passe stocké (spec §8). À la différence
+ * de loadMikrotikConfigFromEnv (utilisé par le script de test manuel de la
+ * Phase 1), ceci permet de piloter plusieurs routeurs différents.
+ */
+export function mikrotikConfigFromRouter(router: {
+  ddns_or_ip: string;
+  api_username: string;
+  api_password_encrypted: string;
+}): MikrotikConfig {
+  return {
+    baseUrl: `https://${router.ddns_or_ip}/rest`,
+    username: router.api_username,
+    password: decrypt(router.api_password_encrypted),
+    // Même variable d'environnement que le script de test manuel : en
+    // développement local, tous les MikroTik du compte ont un certificat
+    // auto-signé. Jamais activé par défaut (spec §3).
     insecureTls: process.env.MIKROTIK_INSECURE_TLS === "true",
   };
 }
